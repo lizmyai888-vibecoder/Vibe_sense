@@ -5,36 +5,52 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     function: () => {
-      // Collecting data from the browser tab
+      const issues = [];
+      
+      // 1. Detect empty buttons (common AI mistake)
+      const emptyButtons = Array.from(document.querySelectorAll('button'))
+                                .filter(b => !b.innerText.trim() && !b.ariaLabel);
+      if (emptyButtons.length > 0) issues.push(`- Found ${emptyButtons.length} buttons without text or labels.`);
+
+      // 2. Check for missing alt text on images
+      const missingAlts = document.querySelectorAll('img:not([alt])').length;
+      if (missingAlts > 0) issues.push(`- Found ${missingAlts} images missing descriptive alt text.`);
+
+      // 3. Analyze DOM nesting depth
+      const deepElements = document.querySelectorAll('* * * * * * * * * *').length;
+      if (deepElements > 50) issues.push(`- DOM tree is too deep/nested. This may cause performance or AI refactoring issues.`);
+
+      // 4. Check for horizontal overflow (responsiveness)
+      const overflowing = Array.from(document.querySelectorAll('*'))
+                               .filter(el => el.offsetWidth > window.innerWidth);
+      if (overflowing.length > 0) issues.push(`- Found ${overflowing.length} elements causing horizontal scroll issues.`);
+
       return {
         url: window.location.href,
-        title: document.title,
-        screen: window.innerWidth + 'x' + window.innerHeight,
-        tech: document.querySelector('[class*="bg-"], [class*="text-"]') ? "Tailwind CSS detected" : "Standard CSS",
-        description: document.querySelector('meta[name="description"]')?.content || "No description found"
+        tech: document.querySelector('[class*="bg-"], [class*="text-"]') ? "Tailwind CSS" : "Standard CSS",
+        recommendations: issues.length > 0 ? issues.join('\n') : "- No critical bugs found. Suggest overall UI polish."
       };
     }
   }, (results) => {
     if (results && results[0]) {
       const data = results[0].result;
       
-      // Building the Universal AI Prompt
       const finalPrompt = `
-[VIBESENSE CONTEXT PACKAGE]
-Project URL: ${data.url}
-Page Title: ${data.title}
-Environment: ${data.tech}
-Screen Resolution: ${data.screen}
-Page Description: ${data.description}
+[VIBESENSE ANALYSIS REPORT]
+Target URL: ${data.url}
+Tech Stack: ${data.tech}
 
-INSTRUCTIONS:
-I am developing this page. Analyze the current state and help me improve the UI/UX. 
-Please ensure all suggestions match the existing design language.
+IDENTIFIED ISSUES:
+${data.recommendations}
+
+INSTRUCTIONS FOR AI:
+I am using a Vibe Coding environment. Please refactor the code to fix the issues listed above. 
+Ensure the fixes are performant and adhere to the existing design system. 
+Provide the complete updated code block for the fix.
       `.trim();
 
-      // Copying to Clipboard
       navigator.clipboard.writeText(finalPrompt).then(() => {
-        status.innerText = "✅ Prompt Copied!";
+        status.innerText = "✅ Analysis & Fix-it Prompt Copied!";
         setTimeout(() => { status.innerText = ""; }, 3000);
       });
     }
