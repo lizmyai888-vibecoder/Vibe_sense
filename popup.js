@@ -5,34 +5,38 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     function: () => {
-      // איסוף נתונים בתוך הדף
+      // Collecting data from the browser tab
       return {
         url: window.location.href,
         title: document.title,
         screen: window.innerWidth + 'x' + window.innerHeight,
-        tech: document.querySelector('[class*="bg-"]') ? "Tailwind CSS" : "Standard CSS",
-        html: document.body.innerText.slice(0, 500) // לוקח טעימה מהטקסט בדף
+        tech: document.querySelector('[class*="bg-"], [class*="text-"]') ? "Tailwind CSS detected" : "Standard CSS",
+        description: document.querySelector('meta[name="description"]')?.content || "No description found"
       };
     }
   }, (results) => {
-    const data = results[0].result;
-    
-    // בניית הפרומפט האוניברסלי (באנגלית - לביצועי AI מקסימליים)
-    const finalPrompt = `
-[AI VIBE CHECK CONTEXT]
+    if (results && results[0]) {
+      const data = results[0].result;
+      
+      // Building the Universal AI Prompt
+      const finalPrompt = `
+[VIBESENSE CONTEXT PACKAGE]
 Project URL: ${data.url}
 Page Title: ${data.title}
-Environment: ${data.tech}, Screen size ${data.screen}
+Environment: ${data.tech}
+Screen Resolution: ${data.screen}
+Page Description: ${data.description}
 
-Page Content Snippet:
-"${data.html}..."
+INSTRUCTIONS:
+I am developing this page. Analyze the current state and help me improve the UI/UX. 
+Please ensure all suggestions match the existing design language.
+      `.trim();
 
-INSTRUCTION: I'm building this page. Based on this context, please help me improve the UI and functionality. Focus on keeping the vibe consistent.
-    `.trim();
-
-    navigator.clipboard.writeText(finalPrompt).then(() => {
-      status.innerText = "✅ הפרומפט הועתק!";
-      setTimeout(() => { status.innerText = ""; }, 3000);
-    });
+      // Copying to Clipboard
+      navigator.clipboard.writeText(finalPrompt).then(() => {
+        status.innerText = "✅ Prompt Copied!";
+        setTimeout(() => { status.innerText = ""; }, 3000);
+      });
+    }
   });
 });
